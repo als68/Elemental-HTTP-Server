@@ -2,8 +2,9 @@ const fs = require('fs');
 const http = require('http');
 const querystring = require('querystring');
 const templateFunc = require('./template');
+const templateIndexFunc = require('./templateIndex');
 
-var myCounter = 2;
+var myCounter = 0;
 
 var proxy = http.createServer( (req, res) => {
 
@@ -56,19 +57,21 @@ var proxy = http.createServer( (req, res) => {
           var newElementToAppend = `<li><a href="/${rawBody.elementName.toLowerCase()}.html">${rawBody.elementName}</a></li></ol>`;
           var appendedIndex = data.toString().replace(/<\/ol>/g, newElementToAppend);
 
-          fs.readFile('./public/index.html', (err, data) => {
-            myCounter++;
-            console.log('updated counter? ' + myCounter);
+          fs.readdir('./public/', function(err, items) {
+              for (var i=0; i<items.length; i++) {
+                if(items[i].includes('.html') && items[i] !== '404.html' && items[i] !== 'index.html'){
+                  myCounter++;
+                  console.log('Number of applicable items: ' + myCounter);
+                  appendedIndex = data.toString().replace(/<!--counterRightHere-->/g, myCounter);
 
-            var updatedCounter = '<h3>' + 'These are ' + myCounter + '</h3>';
-            var replacedCounter = data.toString().replace(/<h3>These are 2<\/h3>/g, updatedCounter);
+              fs.writeFile('./public/index.html', appendedIndex, () => {
+              });
 
-            fs.writeFile('./public/index.html', replacedCounter, () => {
-            });
+                }
+
+              }
           });
 
-          fs.writeFile('./public/index.html', appendedIndex, () => {
-          });
         });
       });
     });
@@ -95,7 +98,13 @@ var proxy = http.createServer( (req, res) => {
   }
 
   function deleteMethod (path, callback){
-    fs.unlink('./public/' + req.url);
+    var rawBody = '';
+    req.on('data', (chunk) =>{
+      rawBody += chunk;
+    }).on('end', function(err){
+      rawBody = querystring.parse(rawBody);
+      fs.unlink('./public/' + rawBody.elementName.toLowerCase() + '.html');
+    });
   }
 
   switch(req.method){
